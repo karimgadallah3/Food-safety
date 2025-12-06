@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام استبيان سلامة الغذاء - جنى فريش</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- صفحة تسجيل الدخول -->
+    <div id="loginPage" class="page">
+        <div class="container">
+            <div class="card login-card">
+                <div class="header-logo">
+                    <h1 class="main-title">تسجيل الدخول</h1>
+                    <p class="subtitle">لوحة تحكم المسؤول</p>
+                </div>
+                <form onsubmit="performLogin(event)">
+                    <div class="form-group">
+                        <label>اسم المستخدم</label>
+                        <input type="text" id="username" class="input" placeholder="أدخل اسم المستخدم" required>
+                    </div>
+                    <div class="form-group">
+                        <label>كلمة المرور</label>
+                        <input type="password" id="password" class="input" placeholder="أدخل كلمة المرور" required>
+                    </div>
+                    <button type="submit" class="btn btn-submit">
+                        🔑 دخول
+                    </button>
+                </form>
+                <button onclick="showSurvey()" class="btn btn-back" style="margin-top: 20px; width: 100%;">
+                    ← العودة للاستبيان
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- صفحة لوحة التحكم -->
+    <div id="adminPage" class="page">
+        <div class="container">
+            <div class="card">
+                <h1 class="main-title">لوحة تحكم استبيان سلامة الغذاء</h1>
+                <p class="subtitle">شركة جنى فريش</p>
+
+                <div class="section">
+                    <h2 class="section-title">إضافة سؤال جديد</h2>
+                    <textarea id="newQuestion" class="textarea" rows="3" placeholder="اكتب السؤال هنا..."></textarea>
+                    <button onclick="addQuestion(event)" class="btn btn-primary">
+                        ➕ إضافة السؤال
+                    </button>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">الأسئلة الحالية (<span id="questionCount">0</span>)</h2>
+                    <div id="questionsList" class="questions-list"></div>
+                </div>
+
+                <div class="actions">
+                    <button onclick="logout()" class="btn btn-danger" style="background: #e53e3e;">
+                        🚪 تسجيل الخروج
+                    </button>
+                    <button onclick="showSurvey()" class="btn btn-success">
+                        📋 معاينة الاستبيان
+                    </button>
+                    <button onclick="showResults()" class="btn btn-info">
+                        📊 عرض النتائج
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- صفحة الاستبيان -->
+    <div id="surveyPage" class="page">
+        <div class="container">
+            <div class="card">
+                <div class="header-logo">
+                    <h1 class="main-title">استبيان ثقافة سلامة الغذاء</h1>
+                    <p class="subtitle">شركة جنى فريش</p>
+                </div>
+
+                <form id="surveyForm" onsubmit="submitSurvey(event)">
+                    <div class="employee-info">
+                        <h2 class="section-title">البيانات الشخصية</h2>
+                        <input type="text" id="employeeName" class="input" placeholder="اسم الموظف" required>
+                        <input type="text" id="department" class="input" placeholder="القسم" required>
+                    </div>
+
+                    <div id="surveyQuestions" class="survey-questions"></div>
+
+                    <button type="submit" class="btn btn-submit">
+                        ✅ إرسال الإجابات
+                    </button>
+                </form>
+
+                <div id="successMessage" class="success-message hidden">
+                    <div class="success-icon">✓</div>
+                    <p class="success-text">تم إرسال إجاباتك بنجاح!</p>
+                    <p class="success-subtext">شكراً لمشاركتك في تحسين ثقافة سلامة الغذاء</p>
+                    <button onclick="resetSurvey()" class="btn btn-secondary">
+                        إجابة جديدة
+                    </button>
+                </div>
+
+                <button onclick="showLogin()" class="btn btn-back">
+                    🔐 تسجيل دخول مسؤول
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- صفحة النتائج -->
+    <div id="resultsPage" class="page">
+        <div class="container-wide">
+            <div class="card">
+                <div class="results-header">
+                    <h1 class="main-title">نتائج استبيان سلامة الغذاء</h1>
+                    <div class="header-actions">
+                        <button onclick="exportToExcel()" class="btn btn-success">
+                            📥 تصدير Excel
+                        </button>
+                        <button onclick="clearAllData()" class="btn btn-danger">
+                            🗑️ حذف البيانات
+                        </button>
+                        <button onclick="showAdmin()" class="btn btn-back">
+                            ← رجوع
+                        </button>
+                    </div>
+                </div>
+
+                <div id="statsContainer" class="stats-grid"></div>
+
+                <div class="table-container">
+                    <table id="resultsTable" class="results-table">
+                        <thead>
+                            <tr>
+                                <th>اسم الموظف</th>
+                                <th>القسم</th>
+                                <th>التاريخ</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="scripts.js"></script>
+</body>
+
+</html>
