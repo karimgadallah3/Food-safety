@@ -51,10 +51,10 @@
                     <div class="brand-logo-img" onclick="showSurvey()" style="cursor: pointer;">
                         <img src="https://i.ibb.co/j9BqHXhB/Logo-11.png" alt="جنى فريش" class="company-logo">
                     </div>
-                    <p class="brand-tagline"><span class="company-name">إدارة توكيد الجودة</span></p>
+                    <p class="brand-tagline"><span class="company-name">شركة جني فريش</span></p>
                 </div>
                 <h1 class="main-title">لوحة تحكم استبيان سلامة الغذاء</h1>
-                <p class="subtitle">إدارة توكيد الجودة</p>
+                <p class="subtitle">شركة جني فريش</p>
 
                 <div class="section">
                     <h2 class="section-title">إضافة سؤال جديد</h2>
@@ -92,7 +92,7 @@
                     <div class="brand-logo-img" onclick="showSurvey()" style="cursor: pointer;">
                         <img src="https://i.ibb.co/j9BqHXhB/Logo-11.png" alt="جنى فريش" class="company-logo">
                     </div>
-                    <p class="brand-tagline"><span class="company-name">إدارة توكيد الجودة</span></p>
+                    <p class="brand-tagline"><span class="company-name">شركة جني فريش</span></p>
                 </div>
                 <div class="header-logo">
                     <h1 class="main-title">استبيان ثقافة سلامة الغذاء</h1>
@@ -151,7 +151,7 @@
                     <div class="brand-logo-img" onclick="showSurvey()" style="cursor: pointer;">
                         <img src="https://i.ibb.co/j9BqHXhB/Logo-11.png" alt="جنى فريش" class="company-logo">
                     </div>
-                    <p class="brand-tagline"><span class="company-name">إدارة توكيد الجودة</span></p>
+                    <p class="brand-tagline"><span class="company-name">شركة جني فريش</span></p>
                 </div>
                 <div class="results-header">
                     <h1 class="main-title">نتائج استبيان سلامة الغذاء</h1>
@@ -188,6 +188,40 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Firebase Integration -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB1HacNWwRezOQp9Pl_c9XdpwkL4R29wV0",
+            authDomain: "jana-food-safety.firebaseapp.com",
+            projectId: "jana-food-safety",
+            storageBucket: "jana-food-safety.firebasestorage.app",
+            messagingSenderId: "1067422844886",
+            appId: "1:1067422844886:web:549e8a8142a827bf5cc677"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Make functions globally available for scripts.js
+        window.firebaseDb = db;
+        window.firebaseCollection = collection;
+        window.firebaseAddDoc = addDoc;
+        window.firebaseGetDocs = getDocs;
+        window.firebaseDeleteDoc = deleteDoc;
+        window.firebaseDoc = doc;
+        window.firebaseQuery = query;
+        window.firebaseOrderBy = orderBy;
+        window.firebaseTimestamp = Timestamp;
+
+        console.log("Firebase Initialized Successfully");
+    </script>
+
     <script src="scripts.js"></script>
 </body>
 

@@ -26,14 +26,75 @@ const DEFAULT_QUESTIONS = [
     "لن تأخذ الإدارة حتى مخاطرة صغيرة عندما يتعلق الأمر بسلامة الأغذية"
 ];
 
-function initDefaultQuestions() {
-    const questions = getQuestions();
+// Firebase Helpers
+async function getQuestionsFromCloud() {
+    try {
+        const q = window.firebaseQuery(window.firebaseCollection(window.firebaseDb, "questions"), window.firebaseOrderBy("id"));
+        const snapshot = await window.firebaseGetDocs(q);
+        const questions = [];
+        snapshot.forEach((doc) => {
+            questions.push({ ...doc.data(), docId: doc.id });
+        });
+        return questions;
+    } catch (e) {
+        console.error("Error fetching questions: ", e);
+        return [];
+    }
+}
+
+async function addQuestionToCloud(questionObj) {
+    try {
+        await window.firebaseAddDoc(window.firebaseCollection(window.firebaseDb, "questions"), questionObj);
+    } catch (e) {
+        console.error("Error adding question: ", e);
+        throw e;
+    }
+}
+
+async function deleteQuestionFromCloud(docId) {
+    try {
+        await window.firebaseDeleteDoc(window.firebaseDoc(window.firebaseDb, "questions", docId));
+    } catch (e) {
+        console.error("Error deleting question: ", e);
+        throw e;
+    }
+}
+
+async function saveSubmissionToCloud(submission) {
+    await window.firebaseAddDoc(window.firebaseCollection(window.firebaseDb, "submissions"), submission);
+}
+
+async function getSubmissionsFromCloud() {
+    try {
+        const q = window.firebaseQuery(window.firebaseCollection(window.firebaseDb, "submissions"), window.firebaseOrderBy("timestamp", "desc"));
+        const snapshot = await window.firebaseGetDocs(q);
+        const submissions = [];
+        snapshot.forEach((doc) => {
+            submissions.push({ ...doc.data(), docId: doc.id });
+        });
+        return submissions;
+    } catch (e) {
+        console.error("Error fetching submissions: ", e);
+        return [];
+    }
+}
+
+async function deleteSubmissionFromCloud(docId) {
+    await window.firebaseDeleteDoc(window.firebaseDoc(window.firebaseDb, "submissions", docId));
+}
+
+// Initialization
+async function initDefaultQuestions() {
+    const questions = await getQuestionsFromCloud();
     if (questions.length === 0) {
-        const defaultQuestionsObjs = DEFAULT_QUESTIONS.map((text, index) => ({
-            id: Date.now() + index,
-            text: text
-        }));
-        saveQuestions(defaultQuestionsObjs);
+        // Add defaults if empty
+        console.log("Initializing default questions...");
+        for (let i = 0; i < DEFAULT_QUESTIONS.length; i++) {
+            await addQuestionToCloud({
+                id: Date.now() + i,
+                text: DEFAULT_QUESTIONS[i]
+            });
+        }
     }
 }
 
@@ -44,7 +105,12 @@ window.onload = function () {
         history.scrollRestoration = 'manual';
     }
 
-    initDefaultQuestions();
+    if (window.firebaseDb) {
+        initDefaultQuestions();
+    } else {
+        console.error("Firebase not initialized yet");
+    }
+
     showSurvey();
 };
 
@@ -89,11 +155,6 @@ function showAdmin() {
 }
 
 function showSurvey() {
-    const questions = getQuestions();
-    if (questions.length === 0) {
-        alert('الرجاء إضافة أسئلة أولاً');
-        return;
-    }
     hideAllPages();
     document.getElementById('surveyPage').classList.add('active');
     loadSurveyQuestions();
@@ -107,7 +168,6 @@ function showResults() {
     hideAllPages();
     document.getElementById('resultsPage').classList.add('active');
     displaySubmissions();
-    displayStats();
 }
 
 function hideAllPages() {
@@ -116,20 +176,8 @@ function hideAllPages() {
     });
 }
 
-function getQuestions() {
-    try {
-        return JSON.parse(localStorage.getItem('surveyQuestions') || '[]');
-    } catch (e) {
-        console.error('Error parsing surveyQuestions', e);
-        return [];
-    }
-}
-
-function saveQuestions(questions) {
-    localStorage.setItem('surveyQuestions', JSON.stringify(questions));
-}
-
-function addQuestion(event) {
+async function addQuestion(event) {
+    const btn = event.target;
     const questionText = document.getElementById('newQuestion').value.trim();
 
     if (!questionText) {
@@ -137,34 +185,44 @@ function addQuestion(event) {
         return;
     }
 
-    const questions = getQuestions();
-    questions.push({
-        id: Date.now(),
-        text: questionText
-    });
+    btn.textContent = '⏳ جاري الإضافة...';
+    btn.disabled = true;
 
-    saveQuestions(questions);
-    document.getElementById('newQuestion').value = '';
-    displayQuestions();
+    try {
+        await addQuestionToCloud({
+            id: Date.now(),
+            text: questionText
+        });
 
-    const btn = event.target;
-    btn.textContent = '✓ تم الإضافة';
-    btn.style.background = '#48bb78';
-    setTimeout(() => {
+        document.getElementById('newQuestion').value = '';
+        displayQuestions();
+
+        btn.textContent = '✓ تم الإضافة';
+        btn.style.background = '#48bb78';
+        setTimeout(() => {
+            btn.textContent = '➕ إضافة السؤال';
+            btn.style.background = '';
+            btn.disabled = false;
+        }, 1500);
+
+    } catch (e) {
+        alert('حدث خطأ أثناء إضافة السؤال');
         btn.textContent = '➕ إضافة السؤال';
-        btn.style.background = '';
-    }, 1500);
+        btn.disabled = false;
+    }
 }
 
-function displayQuestions() {
-    const questions = getQuestions();
+async function displayQuestions() {
     const container = document.getElementById('questionsList');
+    container.innerHTML = '<p style="text-align:center;">جاري تحميل الأسئلة...</p>';
+
+    const questions = await getQuestionsFromCloud();
     const countElement = document.getElementById('questionCount');
 
     countElement.textContent = questions.length;
 
     if (questions.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 40px;">لا توجد أسئلة حتى الآن. ابدأ بإضافة سؤال!</p>';
+        container.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 40px;">لا توجد أسئلة حتى الآن.</p>';
         return;
     }
 
@@ -172,23 +230,27 @@ function displayQuestions() {
         <div class="question-item">
             <span class="question-number">${index + 1}</span>
             <p class="question-text">${q.text}</p>
-            <button onclick="deleteQuestion(${q.id})" class="question-delete">حذف</button>
+            <button onclick="deleteQuestion('${q.docId}')" class="question-delete">حذف</button>
         </div>
     `).join('');
 }
 
-function deleteQuestion(id) {
+async function deleteQuestion(docId) {
     if (!confirm('هل أنت متأكد من حذف هذا السؤال؟')) return;
-
-    let questions = getQuestions();
-    questions = questions.filter(q => q.id !== id);
-    saveQuestions(questions);
+    await deleteQuestionFromCloud(docId);
     displayQuestions();
 }
 
-function loadSurveyQuestions() {
-    const questions = getQuestions();
+async function loadSurveyQuestions() {
     const container = document.getElementById('surveyQuestions');
+    container.innerHTML = '<p style="text-align:center; padding:20px;">جاري تحميل الاستبيان...</p>';
+
+    const questions = await getQuestionsFromCloud();
+
+    if (questions.length === 0) {
+        container.innerHTML = '<p style="text-align:center;">الرجاء إضافة أسئلة من لوحة التحكم</p>';
+        return;
+    }
 
     container.innerHTML = questions.map((q, index) => `
         <div class="survey-question">
@@ -219,69 +281,74 @@ function loadSurveyQuestions() {
     `;
 }
 
-function submitSurvey(event) {
+async function submitSurvey(event) {
     event.preventDefault();
 
-    const employeeName = document.getElementById('employeeName').value;
-    const department = document.getElementById('department').value;
-    const questions = getQuestions();
+    const btn = event.target.querySelector('button[type="submit"]');
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ جاري الإرسال...';
+    btn.disabled = true;
 
-    const responses = questions.map(q => {
-        const answer = document.querySelector(`input[name="question_${q.id}"]:checked`);
-        return {
-            questionId: q.id,
-            questionText: q.text,
-            answer: answer ? answer.value : ''
-        };
-    });
-
-    const surveyResponse = {
-        id: Date.now(),
-        employeeName,
-        department,
-        responses,
-        date: new Date().toLocaleString('ar-EG', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        }),
-        essayAnswers: {
-            suggestions: document.getElementById('essay_suggestions').value || '',
-            deficiencies: document.getElementById('essay_deficiencies').value || '',
-            activities: document.getElementById('essay_activities').value || ''
-        }
-    };
-
-    let allResponses = [];
     try {
-        allResponses = JSON.parse(localStorage.getItem('surveyResponses') || '[]');
-    } catch (e) {
-        console.error('Error parsing surveyResponses', e);
-        allResponses = [];
-    }
-    allResponses.push(surveyResponse);
-    localStorage.setItem('surveyResponses', JSON.stringify(allResponses));
+        const employeeName = document.getElementById('employeeName').value;
+        const department = document.getElementById('department').value;
+        const questions = await getQuestionsFromCloud();
 
-    document.getElementById('surveyForm').classList.add('hidden');
-    document.getElementById('successMessage').classList.remove('hidden');
+        const responses = questions.map(q => {
+            const answer = document.querySelector(`input[name="question_${q.id}"]:checked`);
+            return {
+                questionId: q.id,
+                questionText: q.text,
+                answer: answer ? answer.value : ''
+            };
+        });
+
+        const surveyResponse = {
+            id: Date.now(),
+            timestamp: window.firebaseTimestamp.now(), // Use Firestore timestamp
+            employeeName,
+            department,
+            responses,
+            date: new Date().toLocaleString('ar-EG', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            }),
+            essayAnswers: {
+                suggestions: document.getElementById('essay_suggestions').value || '',
+                deficiencies: document.getElementById('essay_deficiencies').value || '',
+                activities: document.getElementById('essay_activities').value || ''
+            }
+        };
+
+        await saveSubmissionToCloud(surveyResponse);
+
+        document.getElementById('surveyForm').classList.add('hidden');
+        document.getElementById('successMessage').classList.remove('hidden');
+
+    } catch (e) {
+        console.error(e);
+        alert('حدث خطأ أثناء إرسال البيانات. تأكد من اتصالك بالإنترنت.');
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
 }
 
 function resetSurvey() {
     document.getElementById('surveyForm').reset();
     document.getElementById('surveyForm').classList.remove('hidden');
     document.getElementById('successMessage').classList.add('hidden');
+    // Scroll to top
+    window.scrollTo(0, 0);
 }
 
-function displaySubmissions() {
-    let responses = [];
-    try {
-        responses = JSON.parse(localStorage.getItem('surveyResponses') || '[]');
-    } catch (e) {
-        console.error('Error parsing surveyResponses', e);
-    }
+async function displaySubmissions() {
     const tbody = document.getElementById('resultsBody');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">جاري تحميل البيانات...</td></tr>';
+
+    const responses = await getSubmissionsFromCloud();
 
     if (responses.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: #a0aec0;">لا توجد استبيانات مرسلة حتى الآن</td></tr>';
@@ -289,7 +356,7 @@ function displaySubmissions() {
     }
 
     let rows = '';
-    for (let i = responses.length - 1; i >= 0; i--) {
+    for (let i = 0; i < responses.length; i++) {
         const response = responses[i];
         rows += `
             <tr>
@@ -297,10 +364,10 @@ function displaySubmissions() {
                 <td>${response.department}</td>
                 <td>${response.date}</td>
                 <td style="display: flex; gap: 10px; justify-content: center;">
-                    <button onclick="exportSingleSubmission(${response.id})" class="btn btn-success" style="padding: 5px 15px; font-size: 0.9em;">
+                    <button onclick="exportSingleSubmission('${response.docId}')" class="btn btn-success" style="padding: 5px 15px; font-size: 0.9em;">
                         📥 تحميل Excel
                     </button>
-                    <button onclick="deleteSubmission(${response.id})" class="btn btn-danger" style="padding: 5px 15px; font-size: 0.9em; background: #e53e3e;">
+                    <button onclick="deleteSubmission('${response.docId}')" class="btn btn-danger" style="padding: 5px 15px; font-size: 0.9em; background: #e53e3e;">
                         🗑️
                     </button>
                 </td>
@@ -310,120 +377,150 @@ function displaySubmissions() {
     tbody.innerHTML = rows;
 }
 
-function deleteSubmission(id) {
+async function deleteSubmission(docId) {
     if (!confirm('هل أنت متأكد من حذف هذا الاستبيان؟')) return;
-
-    let responses = [];
-    try {
-        responses = JSON.parse(localStorage.getItem('surveyResponses') || '[]');
-    } catch (e) { return; }
-
-    const newResponses = responses.filter(r => r.id !== id);
-    localStorage.setItem('surveyResponses', JSON.stringify(newResponses));
-
+    await deleteSubmissionFromCloud(docId);
     displaySubmissions();
-    displayStats();
 }
 
-function exportSingleSubmission(id) {
-    if (typeof XLSX === 'undefined') {
-        alert('مكتبة Excel غير محملة');
-        return;
-    }
 
-    const responses = JSON.parse(localStorage.getItem('surveyResponses') || '[]');
-    const submission = responses.find(r => r.id === id);
+async function exportSingleSubmission(docId) {
+    const responses = await getSubmissionsFromCloud();
+    const submission = responses.find(r => r.docId === docId);
 
     if (!submission) {
         alert('البيانات غير موجودة');
         return;
     }
 
-    let formattedDate = submission.date.split(',')[0];
+    try {
+        // Encode the path to handle Arabic characters
+        const folderName = encodeURIComponent("إستبيان ثقافة سلامة الغذاء_files");
+        const fileName = "sheet001.htm";
+        const url = `${folderName}/${fileName}`;
 
-    let data = [
-        ['', 'شركة جنى فريش', '', '', 'رقم الوثيقة: FSP-14-01'],
-        ['', 'إجراء ثقافة سلامة الغذاء', '', '', 'تاريخ الإصدار: 1/11/2023'],
-        ['', 'إستبيان ثقافة سلامة الغذاء', '', '', 'إصدار/تعديل: 0/1'],
-        ['', 'اسم الموظف: ' + submission.employeeName, '', 'القسم: ' + submission.department, 'التاريخ: ' + formattedDate],
-        ['', '', '', '', ''],
-        ['م', 'بنود الإستبيان', 'غير موافق', 'محايد', 'أوافق']
-    ];
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Template file not found');
 
-    submission.responses.forEach((r, index) => {
-        const checkMark = '✓';
-        const isAgree = r.answer === 'موافق' ? checkMark : '';
-        const isNeutral = r.answer === 'محايد' ? checkMark : '';
-        const isDisagree = r.answer === 'غير موافق' || r.answer === 'لا أوافق' ? checkMark : '';
+        let htmlContent = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, 'text/html');
 
-        data.push([
-            index + 1,
-            r.questionText,
-            isDisagree,
-            isNeutral,
-            isAgree
-        ]);
-    });
+        // Helper to find cell by text content (approximate match)
+        function findCellByText(text) {
+            const cells = doc.querySelectorAll('td');
+            for (let cell of cells) {
+                if (cell.textContent.includes(text)) return cell;
+            }
+            return null;
+        }
 
-    const ws = XLSX.utils.aoa_to_sheet(data);
+        // 1. Inject Date and Department (Skipping Employee Name as requested)
+        const deptLabel = findCellByText('القسم:');
+        if (deptLabel && deptLabel.nextElementSibling) {
+            deptLabel.textContent = 'القسم: ' + submission.department;
+        }
 
-    const wscols = [
-        { wch: 5 },
-        { wch: 80 },
-        { wch: 10 },
-        { wch: 10 },
-        { wch: 10 }
-    ];
-    ws['!cols'] = wscols;
+        const dateLabel = findCellByText('التاريخ:');
+        if (dateLabel) {
+            let formattedDate = submission.date.split(',')[0];
+            dateLabel.textContent = 'التاريخ: ' + formattedDate;
+        }
 
-    if (!ws['!merges']) ws['!merges'] = [];
-    ws['!merges'].push(
-        { s: { r: 0, c: 1 }, e: { r: 0, c: 3 } },
-        { s: { r: 1, c: 1 }, e: { r: 1, c: 3 } },
-        { s: { r: 2, c: 1 }, e: { r: 2, c: 3 } }
-    );
+        // 2. Inject Answers (Checkmarks)
+        // This logic assumes specific table structure. 
+        // We will loop through rows and try to match question text.
+        const rows = doc.querySelectorAll('tr');
 
-    // إضافة الأقسام المقالية
-    XLSX.utils.sheet_add_aoa(ws, [
-        ['', '', '', '', ''],
-        ['', 'هل لديك أي اقتراحات أو تعليقات للتحسين من درجة الجودة، السلامة، الشرعية، والمحافظة على هوية المنتج؟', '', '', ''],
-        ['1', submission.essayAnswers?.suggestions || '', '', '', ''],
-        ['2', '', '', '', ''],
-        ['3', '', '', '', ''],
-        ['', '', '', '', ''],
-        ['', 'ما هي الأشياء من وجهة نظرك التي بها قصور في التطبيق لسلامة وجودة وشرعية وهوبة المنتج؟', '', '', ''],
-        ['1', submission.essayAnswers?.deficiencies || '', '', '', ''],
-        ['2', '', '', '', ''],
-        ['3', '', '', '', ''],
-        ['', '', '', '', ''],
-        ['', 'ما هي الأنشطة المقترحة لتحقيق الأهداف بشكل أفضل؟', '', '', ''],
-        ['1', submission.essayAnswers?.activities || '', '', '', ''],
-        ['2', '', '', '', ''],
-        ['3', '', '', '', '']
-    ], { origin: -1 });
+        submission.responses.forEach(r => {
+            for (let row of rows) {
+                // Find row containing the question text
+                if (row.textContent.includes(r.questionText.substring(0, 20))) { // Match first 20 chars to be safe
+                    const cells = row.querySelectorAll('td');
+                    // Check cells for columns (Disagree, Neutral, Agree) - usually indices 2, 3, 4 based on typical layout
+                    // Adjust indices based on visual inspection or standard layout: 
+                    // Col 1: Question, Col 2: Disagree, Col 3: Neutral, Col 4: Agree
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'النموذج');
+                    // Let's try to identify columns by header if possible, otherwise assume standard order
+                    // Assuming standard order: [Question] [Disagree] [Neutral] [Agree]
 
-    const safeName = submission.employeeName.replace(/[^a-z0-9\u0600-\u06FF]/gi, '_');
-    const filename = `FSP-14-01_${safeName}.xlsx`;
-    XLSX.writeFile(wb, filename);
+                    let targetIndex = -1;
+                    if (r.answer === 'موافق') targetIndex = 4; // 5th cell (0-indexed? check layout)
+                    else if (r.answer === 'محايد') targetIndex = 3;
+                    else if (r.answer === 'غير موافق' || r.answer === 'لا أوافق') targetIndex = 2;
+
+                    // Heuristic: The question is usually in a wide cell. The checkboxes are small cells following it.
+                    // Let's find the cell with the question text first.
+                    let questionCellIndex = -1;
+                    cells.forEach((c, idx) => {
+                        if (c.textContent.includes(r.questionText.substring(0, 20))) questionCellIndex = idx;
+                    });
+
+                    if (questionCellIndex !== -1) {
+                        // Ensure we have enough cells
+                        if (r.answer === 'غير موافق' && cells[questionCellIndex + 1]) cells[questionCellIndex + 1].textContent = '✓';
+                        if (r.answer === 'محايد' && cells[questionCellIndex + 2]) cells[questionCellIndex + 2].textContent = '✓';
+                        if (r.answer === 'موافق' && cells[questionCellIndex + 3]) cells[questionCellIndex + 3].textContent = '✓';
+                    }
+                    break;
+                }
+            }
+        });
+
+        // 3. Inject Essay Answers
+        // Need to find where to put them. Assuming placeholders or specific text exists.
+        // We will append them to the bottom/end of table if specific place not found, OR find header text.
+
+        const essayMap = {
+            'هل لديك أي اقتراحات': submission.essayAnswers?.suggestions,
+            'ما هي الأشياء من وجهة نظرك التي بها قصور': submission.essayAnswers?.deficiencies,
+            'ما هي الأنشطة المقترحة': submission.essayAnswers?.activities
+        };
+
+        for (let [key, value] of Object.entries(essayMap)) {
+            if (!value) continue;
+            // Find the header row
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].textContent.includes(key)) {
+                    // Inject in the NEXT row(s)
+                    if (rows[i + 1]) {
+                        const targetCell = rows[i + 1].querySelector('td');
+                        if (targetCell) targetCell.textContent = value;
+                    }
+                    break;
+                }
+            }
+        }
+
+        // 4. Download
+        const serializer = new XMLSerializer();
+        const newHtml = serializer.serializeToString(doc);
+        const blob = new Blob([newHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        const downloadUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        const safeName = submission.employeeName.replace(/[^a-z0-9\u0600-\u06FF]/gi, '_'); // Keep for filename only
+        a.download = `FSP-14-01_${safeName}.xls`; // Changed to .xls to open correctly as HTML-Excel
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+
+    } catch (e) {
+        console.error('Export Error:', e);
+        alert('حدث خطأ في تصدير القالب. تأكد من وجود ملف sheet001.htm في المجلد الصحيح.');
+    }
 }
 
-function exportToExcel() {
+
+async function exportToExcel() {
     if (typeof XLSX === 'undefined') {
-        alert('عذراً، مكتبة Excel لم يتم تحميلها بشكل صحيح. يرجى التأكد من الاتصال بالإنترنت.');
+        alert('مكتبة Excel غير موجودة');
         return;
     }
 
-    let responses = [];
-    try {
-        responses = JSON.parse(localStorage.getItem('surveyResponses') || '[]');
-    } catch (e) {
-        console.error('Error parsing surveyResponses', e);
-        alert('حدث خطأ في قراءة البيانات المخزنة.');
-        return;
-    }
+    const responses = await getSubmissionsFromCloud();
 
     if (responses.length === 0) {
         alert('لا توجد بيانات للتصدير');
@@ -442,9 +539,7 @@ function exportToExcel() {
         let formattedDate = response.date;
         try {
             formattedDate = response.date.split(',')[0];
-        } catch (e) {
-            console.error('Date formatting error', e);
-        }
+        } catch (e) { }
 
         response.responses.forEach(r => {
             data.push([
@@ -457,7 +552,6 @@ function exportToExcel() {
     });
 
     const ws = XLSX.utils.aoa_to_sheet(data);
-
     const wscols = [
         { wch: 25 },
         { wch: 80 },
@@ -469,19 +563,22 @@ function exportToExcel() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'نتائج الاستبيان');
 
-    const filename = `FSP-14-01_نتائج_استبيان_${new Date().toLocaleDateString('ar-EG').replace(/\//g, '-')}.xlsx`;
+    const filename = `نتائج_استبيان_${new Date().toLocaleDateString('ar-EG').replace(/\//g, '-')}.xlsx`;
     XLSX.writeFile(wb, filename);
 }
 
 function displayStats() {
-    // يمكن إضافة إحصائيات هنا إذا لزم الأمر
+    // Stats functionality
 }
 
-function clearAllData() {
-    if (!confirm('هل أنت متأكد من حذف جميع الإجابات?\nهذا الإجراء لا يمكن التراجع عنه!')) return;
+async function clearAllData() {
+    if (!confirm('هل أنت متأكد من حذف جميع الإجابات?\nهذا الإجراء سيحذف البيانات من السحابة ولا يمكن التراجع عنه!')) return;
 
-    localStorage.removeItem('surveyResponses');
+    const responses = await getSubmissionsFromCloud();
+    for (let r of responses) {
+        await deleteSubmissionFromCloud(r.docId);
+    }
+
     displaySubmissions();
-    displayStats();
     alert('✓ تم حذف جميع الإجابات بنجاح');
 }
