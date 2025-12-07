@@ -1,228 +1,0 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة توكيد الجودة</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-
-<body>
-    <!-- صفحة تسجيل الدخول -->
-    <div id="loginPage" class="page">
-        <div class="container">
-            <div class="card login-card">
-                <div class="brand-header">
-                    <div class="brand-logo-img" onclick="showSurvey()" style="cursor: pointer;">
-                        <img src="https://i.ibb.co/j9BqHXhB/Logo-11.png" alt="جنى فريش" class="company-logo">
-                    </div>
-                    <p class="brand-tagline"><span class="company-name">شركة جنى فريش</span></p>
-                </div>
-                <div class="header-logo">
-                    <h1 class="main-title">تسجيل الدخول</h1>
-                    <p class="subtitle">لوحة تحكم المسؤول</p>
-                </div>
-                <form onsubmit="performLogin(event)">
-                    <div class="form-group">
-                        <label>اسم المستخدم</label>
-                        <input type="text" id="username" class="input" placeholder="أدخل اسم المستخدم" required>
-                    </div>
-                    <div class="form-group">
-                        <label>كلمة المرور</label>
-                        <input type="password" id="password" class="input" placeholder="أدخل كلمة المرور" required>
-                    </div>
-                    <button type="submit" class="btn btn-submit">
-                        🔑 دخول
-                    </button>
-                </form>
-                <button onclick="showSurvey()" class="btn btn-back" style="margin-top: 20px; width: 100%;">
-                    ← العودة للاستبيان
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- صفحة لوحة التحكم -->
-    <div id="adminPage" class="page">
-        <div class="container">
-            <div class="card">
-                <div class="brand-header">
-                    <div class="brand-logo-img" onclick="showSurvey()" style="cursor: pointer;">
-                        <img src="https://i.ibb.co/j9BqHXhB/Logo-11.png" alt="جنى فريش" class="company-logo">
-                    </div>
-                    <p class="brand-tagline"><span class="company-name">شركة جني فريش</span></p>
-                </div>
-                <h1 class="main-title">لوحة تحكم استبيان سلامة الغذاء</h1>
-                <p class="subtitle">شركة جني فريش</p>
-
-                <div class="section">
-                    <h2 class="section-title">إضافة سؤال جديد</h2>
-                    <textarea id="newQuestion" class="textarea" rows="3" placeholder="اكتب السؤال هنا..."></textarea>
-                    <button onclick="addQuestion(event)" class="btn btn-primary">
-                        ➕ إضافة السؤال
-                    </button>
-                </div>
-
-                <div class="section">
-                    <h2 class="section-title">الأسئلة الحالية (<span id="questionCount">0</span>)</h2>
-                    <div id="questionsList" class="questions-list"></div>
-                </div>
-
-                <div class="actions">
-                    <button onclick="logout()" class="btn btn-danger" style="background: #e53e3e;">
-                        🚪 تسجيل الخروج
-                    </button>
-                    <button onclick="showSurvey()" class="btn btn-success">
-                        📋 معاينة الاستبيان
-                    </button>
-                    <button onclick="showResults()" class="btn btn-info">
-                        📊 عرض النتائج
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- صفحة الاستبيان -->
-    <div id="surveyPage" class="page">
-        <div class="container">
-            <div class="card">
-                <div class="brand-header">
-                    <div class="brand-logo-img" onclick="showSurvey()" style="cursor: pointer;">
-                        <img src="https://i.ibb.co/j9BqHXhB/Logo-11.png" alt="جنى فريش" class="company-logo">
-                    </div>
-                    <p class="brand-tagline"><span class="company-name">شركة جني فريش</span></p>
-                </div>
-                <div class="header-logo">
-                    <h1 class="main-title">استبيان ثقافة سلامة الغذاء</h1>
-                    <p class="subtitle">إدارة توكيد الجودة</p>
-                </div>
-
-                <form id="surveyForm" onsubmit="submitSurvey(event)">
-                    <div class="employee-info">
-                        <h2 class="section-title">البيانات الشخصية</h2>
-                        <input type="text" id="employeeName" class="input" placeholder="اسم الموظف" required>
-                        <select id="department" class="input" required>
-                            <option value="" disabled selected>اختر القسم</option>
-                            <option value="الإدارة">الإدارة</option>
-                            <option value="مراقبة الجودة">مراقبة الجودة</option>
-                            <option value="الفرز والتعبئة">الفرز والتعبئة</option>
-                            <option value="الأمن">الأمن</option>
-                            <option value="الصيانة">الصيانة</option>
-                            <option value="الوثائق والسجلات">الوثائق والسجلات</option>
-                            <option value="السلامة والصحة المهنية">السلامة والصحة المهنية</option>
-                            <option value="المخازن">المخازن</option>
-                            <option value="استلام الخام">استلام الخام</option>
-                            <option value="الثلاجات">الثلاجات</option>
-                            <option value="مكافحة الآفات">مكافحة الآفات</option>
-                            <option value="النظافة والتطهير">النظافة والتطهير</option>
-                        </select>
-                    </div>
-
-                    <div id="surveyQuestions" class="survey-questions"></div>
-
-                    <button type="submit" class="btn btn-submit">
-                        ✅ إرسال الإجابات
-                    </button>
-                </form>
-
-                <div id="successMessage" class="success-message hidden">
-                    <div class="success-icon">✓</div>
-                    <p class="success-text">تم إرسال إجاباتك بنجاح!</p>
-                    <p class="success-subtext">شكراً لمشاركتك في تحسين ثقافة توكيد الجودة</p>
-                    <button onclick="resetSurvey()" class="btn btn-secondary">
-                        إجابة جديدة
-                    </button>
-                </div>
-
-                <button onclick="showLogin()" class="btn btn-back">
-                    🔐 تسجيل دخول مسؤول
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- صفحة النتائج -->
-    <div id="resultsPage" class="page">
-        <div class="container-wide">
-            <div class="card">
-                <div class="brand-header">
-                    <div class="brand-logo-img" onclick="showSurvey()" style="cursor: pointer;">
-                        <img src="https://i.ibb.co/j9BqHXhB/Logo-11.png" alt="جنى فريش" class="company-logo">
-                    </div>
-                    <p class="brand-tagline"><span class="company-name">شركة جني فريش</span></p>
-                </div>
-                <div class="results-header">
-                    <h1 class="main-title">نتائج استبيان سلامة الغذاء</h1>
-                    <div class="header-actions">
-                        <button onclick="exportToExcel()" class="btn btn-success">
-                            📥 تصدير Excel
-                        </button>
-                        <button onclick="clearAllData()" class="btn btn-danger">
-                            🗑️ حذف البيانات
-                        </button>
-                        <button onclick="showAdmin()" class="btn btn-back">
-                            ← رجوع
-                        </button>
-                    </div>
-                </div>
-
-                <div id="statsContainer" class="stats-grid"></div>
-
-                <div class="table-container">
-                    <table id="resultsTable" class="results-table">
-                        <thead>
-                            <tr>
-                                <th>اسم الموظف</th>
-                                <th>القسم</th>
-                                <th>التاريخ</th>
-                                <th>الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="resultsBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <!-- Firebase Integration -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyB1HacNWwRezOQp9Pl_c9XdpwkL4R29wV0",
-            authDomain: "jana-food-safety.firebaseapp.com",
-            projectId: "jana-food-safety",
-            storageBucket: "jana-food-safety.firebasestorage.app",
-            messagingSenderId: "1067422844886",
-            appId: "1:1067422844886:web:549e8a8142a827bf5cc677"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Make functions globally available for scripts.js
-        window.firebaseDb = db;
-        window.firebaseCollection = collection;
-        window.firebaseAddDoc = addDoc;
-        window.firebaseGetDocs = getDocs;
-        window.firebaseDeleteDoc = deleteDoc;
-        window.firebaseDoc = doc;
-        window.firebaseQuery = query;
-        window.firebaseOrderBy = orderBy;
-        window.firebaseTimestamp = Timestamp;
-
-        console.log("Firebase Initialized Successfully");
-    </script>
-
-    <script src="scripts.js"></script>
-</body>
-
-</html>
